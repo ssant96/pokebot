@@ -8,6 +8,7 @@ import json
 import threading
 import random
 from screeninfo import get_monitors
+from pathlib import Path
 
 
 # Gets user data
@@ -64,7 +65,12 @@ class pokebot():
         screen_index = 0
 
         # Load the target image you want to click on
-        target_image = cv2.imread('C:/Users/Santi/Desktop/discord_react/Pokeball.png')
+        p1 = Path(__file__)
+        p1 = p1.parent.parent.absolute()
+        path = str(p1)
+        print(path)
+        # target_image = cv2.imread('C:/Users/Santi/Documents/Code/pokebot/script/Pokeball.png')
+        target_image = cv2.imread(path + '\Pokeball.png')
 
         # Get the resolution of the specified screen
         screen = get_monitors()[screen_index]
@@ -95,7 +101,7 @@ class pokebot():
                 center_y = y + height // 2
 
                 # Random time to click button
-                randomClick = (random.randint(200,500))/100.0
+                randomClick = (random.randint(100,300))/100.0
                 time.sleep(randomClick)
 
                 # Perform the click using pyautogui
