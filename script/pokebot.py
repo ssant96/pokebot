@@ -1,3 +1,4 @@
+# To install dependencies run '-pip install -r dependencies.txt' on terminal
 import cv2
 import numpy as np
 import pyautogui
