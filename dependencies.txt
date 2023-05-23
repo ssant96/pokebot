@@ -2,4 +2,6 @@ opencv-python
 numpy
 pyautogui
 requests
+pygame
+pillow
 screeninfo

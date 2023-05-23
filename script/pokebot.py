@@ -8,6 +8,8 @@ import os
 import json
 import threading
 import random
+import pygame
+from PIL import Image
 from screeninfo import get_monitors
 from pathlib import Path
 
@@ -23,6 +25,8 @@ def load_data_from_json():
     default_data = {
         "TOKEN": "",
         "CHANNEL_URL": "",
+        "DM_URL": "",
+        "BOT_TOKEN": ""
     }
 
     if os.path.exists(json_path):
@@ -37,15 +41,32 @@ def load_data_from_json():
     
     return data
 
+# Path 
+p1 = Path(__file__)
+p1 = p1.parent.parent.absolute()
+path = str(p1)
+print(path)
+
+# Load data from userData.json
+data = load_data_from_json()
+TOKEN = data["TOKEN"]
+CHANNEL_URL = data["CHANNEL_URL"]
+DM_URL = data["DM_URL"]
+BOT_TOKEN = data["BOT_TOKEN"]
+
+# Global thread var
+stop_event = threading.Event()
 
 class pokebot():
     @staticmethod
     def send_requests():
-        data = load_data_from_json()
-        TOKEN = data["TOKEN"]
-        CHANNEL_URL = data["CHANNEL_URL"]
+        while not stop_event.is_set():
 
-        while True:
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
+            
+            # Sends ;p commands every random interval
             header = {
                 'authorization': TOKEN,
             }
@@ -53,31 +74,56 @@ class pokebot():
                 'content': ";p"
             }
 
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
+
             r = requests.post(CHANNEL_URL, data=payload, headers=header)
-            
+
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
+                    
+            # checks for keyword to stop script
+            VERIFICATION_KEYWORD = "You must wait until"
+            r = requests.get(CHANNEL_URL, headers=header)
+            messages = r.json()
+            for message in messages:
+                if VERIFICATION_KEYWORD.lower() in message['content'].lower():
+                # send a DM using alt account
+                    header = {
+                        'authorization': BOT_TOKEN,
+                    }
+                    payload = {
+                        'content': "Script stopped because wait message"
+                    }
+                    stop_event.set()
+                    return
             randomSleep = (random.randint(1000,1500))/100.0
             print(f"Sleeping for {randomSleep}")
             time.sleep(randomSleep)
-
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
 
     @staticmethod
     def scan_click_button():
-        # Specify the index of the screen you want to capture (e.g., 0 for the first screen)
-        screen_index = 0
+        while not stop_event.is_set():
+            # Specify the index of the screen you want to capture (e.g., 0 for the first screen)
+            screen_index = 0
 
-        # Load the target image you want to click on
-        p1 = Path(__file__)
-        p1 = p1.parent.parent.absolute()
-        path = str(p1)
-        print(path)
-        # target_image = cv2.imread('C:/Users/Santi/Documents/Code/pokebot/script/Pokeball.png')
-        target_image = cv2.imread(path + '\Pokeball.png')
+            # target_image = cv2.imread('C:/Users/Santi/Documents/Code/pokebot/script/Pokeball.png')
+            target_image = cv2.imread(path + '\Pokeball.png')
 
-        # Get the resolution of the specified screen
-        screen = get_monitors()[screen_index]
-        screen_width, screen_height = screen.width, screen.height
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
 
-        while True:
+            # Get the resolution of the specified screen
+            screen = get_monitors()[screen_index]
+            screen_width, screen_height = screen.width, screen.height
+
+            
             # Capture a screenshot of the specified screen
             screenshot = pyautogui.screenshot(region=(screen.x, screen.y, screen_width, screen_height))
             screenshot = np.array(screenshot)
@@ -86,6 +132,10 @@ class pokebot():
             # Perform template matching to find the target image in the screenshot
             result = cv2.matchTemplate(screenshot, target_image, cv2.TM_CCOEFF_NORMED)
             min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+            # Check again here if the thread should stop
+            if stop_event.is_set():
+                break
 
             # Specify a threshold for template matching confidence
             threshold = 0.8
@@ -108,24 +158,96 @@ class pokebot():
                 # Perform the click using pyautogui
                 pyautogui.click(screen.x + center_x, screen.y + center_y)
 
+                if stop_event.is_set():
+                    return
+
+    @staticmethod
+    def check_for_captcha():
+        while not stop_event.is_set():
+            # Load the captcha image
+            captcha_image = cv2.imread(path + '\captcha.png')
+
+            # Capture a screenshot of the screen
+            screenshot = pyautogui.screenshot()
+            screenshot = np.array(screenshot)
+            screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
+
+            # Perform template matching to find the captcha image in the screenshot
+            result = cv2.matchTemplate(screenshot, captcha_image, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+
+            # If the template matching confidence is above a certain threshold, take appropriate action
+            if max_val >= 0.8:
+                print('Captcha detected!')
+                # Take appropriate action here...
+
+                time.sleep(1)  # check every second or however frequently you want
+                print('-------------------------------------------------')
+                print('')        
+                print(f"      POKEMEOW ASKING FOR CAPTCHA!              ")
+                print('')
+                print('-------------------------------------------------')
+                
+                # send a DM using alt account
+                header = {
+                    'authorization': BOT_TOKEN,
+                }
+                payload = {
+                    'content': "POKEMEOW is asking for CAPTCHA! You have 2 mins to solve!"
+                }
+                r = requests.post(DM_URL, data=payload, headers=header)
+
+                # shows image
+                image = Image.open(path + '\warning.jpg')
+                image.show()
+
+
+                # play beep sound 
+                def play_sound(file_path):
+                    pygame.mixer.init()
+                    pygame.mixer.music.load(file_path)
+                    pygame.mixer.music.play()
+                    while pygame.mixer.music.get_busy():
+                        time.sleep(1)
+
+                if __name__ == "__main__":
+                    audio_file = os.path.join(path, 'beep.mp3')
+                    for i in range(10):
+                        play_sound(audio_file)
+                        time.sleep(1)
+                stop_event.set()
+                return
+
 
 if __name__ == "__main__":
-    # Start two threads
+    # Start three threads
     thread1 = threading.Thread(target=pokebot.send_requests)
     thread2 = threading.Thread(target=pokebot.scan_click_button)
+    thread3 = threading.Thread(target=pokebot.check_for_captcha)
 
     # Set threads as daemons
     thread1.daemon = True
     thread2.daemon = True
+    thread3.daemon = True
 
     # Start threads
     thread1.start()
     thread2.start()
+    thread3.start()
 
-    # Wait for both threads to finish
+    # Wait for all threads to finish
     try:
-        while thread1.is_alive() or thread2.is_alive():
+        while thread1.is_alive() or thread2.is_alive() or thread3.is_alive():
             time.sleep(1)  # wait for 1 second or any suitable time
     except KeyboardInterrupt:
         print("Program stopped by user")
+        stop_event.set()
+    finally:
+        # This is the block of code that will clean up and end the program.
+        # Make sure to join all the threads here to ensure they have ended before the main thread ends.
+        thread1.join()
+        thread2.join()
+        thread3.join()
+        print("Program has terminated")
+
 
