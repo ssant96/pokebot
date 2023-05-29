@@ -60,7 +60,6 @@ stop_event = threading.Event()
 class pokebot():
     @staticmethod
     def spawn_pokemon():
-        count = 0
         while not stop_event.is_set():
 
             # Check again here if the thread should stop
@@ -85,25 +84,23 @@ class pokebot():
             if stop_event.is_set():
                 break
                     
-            # # checks for keyword to stop script
-            # VERIFICATION_KEYWORD = "You must wait until"
-            # r = requests.get(CHANNEL_URL, headers=header)
-            # messages = r.json()
-            # for message in messages:
-            #     if VERIFICATION_KEYWORD.lower() in message['content'].lower():
-            #     # send a DM using alt account
-            #         header = {
-            #             'authorization': BOT_TOKEN,
-            #         }
-            #         payload = {
-            #             'content': "Script stopped because wait message"
-            #         }
-            #         stop_event.set()
-            #         return
-            randomSleep = (random.randint(1200,2400))/100.0
-            count += 1
+            # checks for keyword to stop script
+            VERIFICATION_KEYWORD = "You must wait until"
+            r = requests.get(CHANNEL_URL, headers=header)
+            messages = r.json()
+            for message in messages:
+                if VERIFICATION_KEYWORD.lower() in message['content'].lower():
+                # send a DM using alt account
+                    header = {
+                        'authorization': BOT_TOKEN,
+                    }
+                    payload = {
+                        'content': "Script stopped because wait message"
+                    }
+                    stop_event.set()
+                    return
+            randomSleep = (random.randint(1000,1500))/100.0
             print(f"Sleeping for {randomSleep}")
-            print(f"{count} runs have been made so far...")
             time.sleep(randomSleep)
             # Check again here if the thread should stop
             if stop_event.is_set():
@@ -116,9 +113,12 @@ class pokebot():
             screen_index = 0
             
             # Images path
-            pokeball = cv2.imread(path + '\pokeball.png')
-            # fishRod = cv2.imread(path + '\\fishrod.png')
-            
+            detectLeg = cv2.imread(path + '\\detectLeg.png')
+            detectRare = cv2.imread(path + '\\detectRare.png')
+            pokeball = cv2.imread(path + '\\pokeball.png')
+            superball = cv2.imread(path + '\\superball.png')
+            ultraball = cv2.imread(path + '\\ultraball.png')
+        
             # Check again here if the thread should stop
             if stop_event.is_set():
                 break
@@ -127,22 +127,36 @@ class pokebot():
             screen = get_monitors()[screen_index]
             screen_width, screen_height = screen.width, screen.height
 
-            
             # Capture a screenshot of the specified screen
             screenshot = pyautogui.screenshot(region=(screen.x, screen.y, screen_width, screen_height))
             screenshot = np.array(screenshot)
             screenshot = cv2.cvtColor(screenshot, cv2.COLOR_BGR2RGB)
 
-            # Perform template matching to find the target image in the screenshot
-            result = cv2.matchTemplate(screenshot, pokeball, cv2.TM_CCOEFF_NORMED)
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
+            # Perform template matching to find the detectLeg and detectRare images in the screenshot
+            result_leg = cv2.matchTemplate(screenshot, detectLeg, cv2.TM_CCOEFF_NORMED)
+            _, max_val_leg, _, _ = cv2.minMaxLoc(result_leg)
 
+            result_rare = cv2.matchTemplate(screenshot, detectRare, cv2.TM_CCOEFF_NORMED)
+            _, max_val_rare, _, _ = cv2.minMaxLoc(result_rare)
+            
+            # Specify a threshold for template matching confidence
+            threshold = 0.9
+            
+            # If detectLeg is detected, find and click ultraball. If detectRare is detected, find and click superball. Else, find and click pokeball.
+            if max_val_leg >= threshold:
+                ball = ultraball
+            elif max_val_rare >= threshold:
+                ball = superball
+            else:
+                ball = pokeball
+            
+            # Perform template matching to find the target ball in the screenshot
+            result_ball = cv2.matchTemplate(screenshot, ball, cv2.TM_CCOEFF_NORMED)
+            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result_ball)
+            
             # Check again here if the thread should stop
             if stop_event.is_set():
                 break
-
-            # Specify a threshold for template matching confidence
-            threshold = 0.8
 
             # If the template matching confidence is above the threshold, click on the image
             if max_val >= threshold:
@@ -151,12 +165,12 @@ class pokebot():
                 x, y = top_left
 
                 # Calculate the coordinates of the center of the matched region
-                height, width, _ = pokeball.shape
+                height, width, _ = ball.shape
                 center_x = x + width // 2
                 center_y = y + height // 2
 
                 # Random time to click button
-                randomClick = (random.randint(200,450))/100.0
+                randomClick = (random.randint(100,300))/100.0
                 time.sleep(randomClick)
 
                 # Perform the click using pyautogui
@@ -164,6 +178,7 @@ class pokebot():
 
                 if stop_event.is_set():
                     return
+
 
     @staticmethod
     def check_captcha():
@@ -216,7 +231,7 @@ class pokebot():
 
                 if __name__ == "__main__":
                     audio_file = os.path.join(path, 'beep.mp3')
-                    for i in range(5):
+                    for i in range(10):
                         play_sound(audio_file)
                         time.sleep(1)
                 stop_event.set()
@@ -245,7 +260,6 @@ if __name__ == "__main__":
             time.sleep(1)  # wait for 1 second or any suitable time
     except KeyboardInterrupt:
         print("Program stopped by user")
-        print("Exiting program...Please wait...")
         stop_event.set()
     finally:
         # This is the block of code that will clean up and end the program.
