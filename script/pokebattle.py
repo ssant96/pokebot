@@ -72,7 +72,7 @@ class pokebot():
                 'authorization': TOKEN,
             }
             payload = {
-                'content': ";p"
+                'content': ";b npc 8"
             }
 
             # Check again here if the thread should stop
@@ -85,7 +85,7 @@ class pokebot():
             if stop_event.is_set():
                 break
                     
-            randomSleep = (random.randint(1200,2400))/100.0
+            randomSleep = (random.randint(6000,7000))/100.0
             count += 1
             print(f"Sleeping for {randomSleep}")
             print(f"{count} runs have been made so far...")
@@ -101,7 +101,7 @@ class pokebot():
             screen_index = 0
             
             # Images path
-            pokeball = cv2.imread(path + '\pokeball.png')
+            pokeball = cv2.imread(path + '\psystrike.png')
             # fishRod = cv2.imread(path + '\\fishrod.png')
             
             # Check again here if the thread should stop
@@ -131,21 +131,28 @@ class pokebot():
 
             # If the template matching confidence is above the threshold, click on the image
             if max_val >= threshold:
-                # Calculate the coordinates of the top-left corner of the matched region
-                top_left = max_loc
-                x, y = top_left
+                # Initialize click count
+                click_count = 0
+                while click_count < 3:
 
-                # Calculate the coordinates of the center of the matched region
-                height, width, _ = pokeball.shape
-                center_x = x + width // 2
-                center_y = y + height // 2
+                    # Calculate the coordinates of the top-left corner of the matched region
+                    top_left = max_loc
+                    x, y = top_left
 
-                # Random time to click button
-                randomClick = (random.randint(200,450))/100.0
-                time.sleep(randomClick)
+                    # Calculate the coordinates of the center of the matched region
+                    height, width, _ = pokeball.shape
+                    center_x = x + width // 2
+                    center_y = y + height // 2
 
-                # Perform the click using pyautogui
-                pyautogui.click(screen.x + center_x, screen.y + center_y)
+                    # Random time to click button
+                    randomClick = (random.randint(150,300))/100.0
+                    time.sleep(randomClick)
+
+                    # Perform the click using pyautogui
+                    pyautogui.click(screen.x + center_x, screen.y + center_y)
+
+                    # Click count add
+                    click_count += 1
 
                 if stop_event.is_set():
                     return
